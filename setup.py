@@ -1,26 +1,33 @@
 #!/usr/bin/env python
+"""Setup tools parameters."""
 
-"Setuptools params"
+import os
 
-from setuptools import setup, find_packages
+from setuptools import setup
 from os.path import join
 
-# Get version number from source tree
-import sys
-sys.path.append( '.' )
 from mininet.net import VERSION
 
-scripts = [ join( 'bin', filename ) for filename in [ 'mn' ] ]
+MODNAME = DIST_NAME = 'mininet'
+RELATIVE_DIR = os.path.dirname(__file__)
+SCRIPTS = [join('bin', filename) for filename in ['mn']]
 
-modname = distname = 'mininet'
+
+def _read_requirements() -> list:
+    """Read the requirements.txt file."""
+    with open(os.path.join(RELATIVE_DIR, 'requirements.txt'), 'rt') as file:
+        requires = file.readlines()
+    return requires
+
 
 setup(
-    name=distname,
+    name=DIST_NAME,
     version=VERSION,
     description='Process-based OpenFlow emulator',
     author='Bob Lantz',
     author_email='rlantz@cs.stanford.edu',
-    packages=[ 'mininet', 'mininet.examples' ],
+    packages=['mininet', 'mininet.examples'],
+    python_requires='>3.8.0',
     long_description="""
         Mininet is a network emulator which uses lightweight
         virtualization to create virtual networks for rapid
@@ -28,16 +35,14 @@ setup(
         using OpenFlow. http://mininet.org
         """,
     classifiers=[
-          "License :: OSI Approved :: BSD License",
-          "Programming Language :: Python",
-          "Development Status :: 5 - Production/Stable",
-          "Intended Audience :: Developers",
-          "Topic :: System :: Emulators",
+        "License :: OSI Approved :: BSD License",
+        "Programming Language :: Python",
+        "Development Status :: 5 - Production/Stable",
+        "Intended Audience :: Developers",
+        "Topic :: System :: Emulators",
     ],
     keywords='networking emulator protocol Internet OpenFlow SDN',
     license='BSD',
-    install_requires=[
-        'setuptools'
-    ],
-    scripts=scripts,
+    install_requires=_read_requirements(),
+    scripts=SCRIPTS,
 )
