@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from mininet3.api.routes import core_v1, topology_v1
+from mirror_net.api.routes import core_v1, topology_v1
 
 app = FastAPI(
     title="Mininet",

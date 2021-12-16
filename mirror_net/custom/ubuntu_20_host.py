@@ -1,6 +1,6 @@
 """Ubuntu 20.04 Alpine Host."""
 
-from mininet3.core.host_lib import DockerHost
+from mirror_net.core.host_lib import DockerHost
 
 
 class Ubuntu20AlpineHost(DockerHost):

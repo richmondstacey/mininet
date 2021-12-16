@@ -1,0 +1,7 @@
+coloredlogs==15.0.1
+docker==5.0.3
+fastapi==0.70.1
+pyroute2==0.6.5
+setuptools==59.6.0
+tcconfig==0.27.1
+uvicorn[standard]==0.16.0

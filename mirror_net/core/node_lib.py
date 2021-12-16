@@ -1,11 +1,12 @@
 """Base Node type and helpers."""
 
 import abc
+import ipaddress
 import logging
 
 import docker
 
-from mininet3.core.interface_lib import INTERFACE_TYPES
+from pyroute2 import NDB
 
 logger = logging.getLogger(__name__)
 
@@ -13,12 +14,59 @@ logger = logging.getLogger(__name__)
 class Node(metaclass=abc.ABCMeta):
     """The base network node type."""
 
-    def __init__(self, interface_type: str = 'default', num_interfaces: int = 1, **kwargs) -> None:
+    def __init__(
+            self,
+            num_interfaces: int = 1,
+            base_ip_address: str = '10.0.0.0',
+            subnet_cidr: int = 24,
+            **kwargs,
+    ) -> None:
         """Initialize all interfaces for the node."""
-        iface_cls = INTERFACE_TYPES.get(interface_type)
-        if iface_cls is None:
-            raise ValueError(f'Invalid interface type "{interface_type}" was requested.')
-        self.interfaces = {index: iface_cls() for index in range(num_interfaces)}
+        self.network = NDB()
+        self.available_addresses = ipaddress.ip_network(f'{base_ip_address}/{subnet_cidr}').hosts()
+        self.interfaces = {index: self.add_interface(index) for index in range(num_interfaces)}
+
+    def generate_ip(self) -> str:
+        """Generate an IP address within the subnet range.
+
+        Yields:
+            address: An IP address from the subnet range.
+        """
+        address = next(self.available_addresses)
+        return address
+
+    def add_interface(
+            self,
+            index: int,
+            ip_address: str = None,
+            subnet_cidr: int = 24,
+    ):
+        """Add a new interface to the node."""
+        if not ip_address:
+            ip_address = self.generate_ip()
+        # TODO: Generate MAC address?
+        # TODO: Bandwidth, delay, jitter: tc qdisc add
+        # https://pypi.org/project/tcconfig/
+        iface = self.network.interfaces.create(
+            ifname=f'veth{index}',
+            kind='veth',
+            # TODO: What goes here for peer?
+            # peer={'ifname': 'eth0', 'net_ns_fd': 'testns'},
+        )
+        iface.set('state', 'up')
+        # TODO: Does this use prefixlen or mask?
+        iface.add_ip(address=ip_address, prefixlen=subnet_cidr)
+        iface.commit()
+        return iface
+
+    def delete_interface(self, index: int) -> None:
+        """Delete an interface by index."""
+        # TODO: Add logic here.
+
+    def list_interfaces(self) -> list:
+        """List all interfaces on the node."""
+        interfaces = [dict(iface) for iface in self.network.interfaces.summary()]
+        return interfaces
 
     async def async_start(self) -> None:
         """Start running the node asynchronously."""

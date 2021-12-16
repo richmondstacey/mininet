@@ -5,10 +5,10 @@ import logging
 
 from typing import Type, Union
 
-from mininet3.core import host_lib
-from mininet3.core import link_lib
-from mininet3.core import node_lib
-from mininet3.core import switch_lib
+from mirror_net.core import host_lib
+from mirror_net.core import link_lib
+from mirror_net.core import node_lib
+from mirror_net.core import switch_lib
 
 logger = logging.getLogger(__name__)
 

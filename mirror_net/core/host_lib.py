@@ -1,6 +1,6 @@
 """Host node types."""
 
-from mininet3.core.node_lib import Node, DockerNode
+from mirror_net.core.node_lib import Node, DockerNode
 
 
 class Host(Node):

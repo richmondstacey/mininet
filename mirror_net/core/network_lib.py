@@ -4,7 +4,7 @@
 
 import logging
 
-from mininet3.core import topology_lib
+from mirror_net.core import topology_lib
 
 logger = logging.getLogger(__name__)
 
@@ -22,8 +22,8 @@ DEPLOYMENT_TYPES = (
 )
 
 
-class Mininet3:
-    """Mininet Network Emulator for Python3."""
+class MirrorNet:
+    """Network Mirror/Emulator."""
 
     def __init__(self, deployment_type: str = 'local', topology_type: str = 'default', **kwargs) -> None:
         """Create the emulated network.

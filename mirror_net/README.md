@@ -27,3 +27,19 @@
 - Host types (CPU limited host)
 - Defaults should just work... local
 - Add support for non-Linux local?
+
+
+### Notes
+
+- To create and configure an interface in Linux:
+  1. "ip link add"
+  2. "tc qdisc add"
+
+
+### Architecture Layers
+
+#### Local
+REST API -> CLI -> Network -> Topology -> Nodes/Links/Interfaces
+
+#### Docker
+REST API -> Docker exec -> CLI -> Network -> Topology -> Nodes/Links/Interfaces

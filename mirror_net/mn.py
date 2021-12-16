@@ -8,26 +8,25 @@ import ipaddress
 import logging
 import os
 
-from mininet3.core.controller_lib import Controller, CONTROLLER_TYPES
-from mininet3.core.host_lib import Host, HOST_TYPES
-from mininet3.core.link_lib import Link, LINK_TYPES
-from mininet3.core.interface_lib import Interface, INTERFACE_TYPES
-from mininet3.core.network_lib import Mininet3
-from mininet3.core.switch_lib import Switch, SWITCH_TYPES
-from mininet3.core.topology_lib import Topology, TOPOLOGY_TYPES
+from mirror_net import __version__
+from mirror_net.core.controller_lib import Controller, CONTROLLER_TYPES
+from mirror_net.core.host_lib import Host, HOST_TYPES
+from mirror_net.core.link_lib import Link, LINK_TYPES
+from mirror_net.core.network_lib import MirrorNet
+from mirror_net.core.switch_lib import Switch, SWITCH_TYPES
+from mirror_net.core.topology_lib import Topology, TOPOLOGY_TYPES
 
 # TODO: Status update instead of printing everything to screen?
 
 logger = logging.getLogger(__name__)
 REL_DIR = os.path.dirname(os.path.abspath(__file__))
 USE_ASYNC = os.getenv('USE_ASYNC', 'false').lower() == 'true'
-VERSION = '3.0.0'  # TODO: Use the shared version.
 VERBOSITY_TYPES = (
-    'critical',
-    'error',
-    'warn',
-    'info',
-    'debug',
+    'CRITICAL',
+    'ERROR',
+    'WARN',
+    'INFO',
+    'DEBUG',
 )
 NAT_HELP = """Adds a NAT to the topology that connects Mininet hosts to the physical network.
 Warning: This may route any traffic on the machine that uses Mininet's IP subnet into the Mininet network.
@@ -48,6 +47,7 @@ def get_args() -> argparse.Namespace:
     Returns:
         args: The user arguments.
     """
+    # TODO: Load custom assets to update options for argparse?!
     parser = argparse.ArgumentParser(
         prog='mn',
         description='The mn utility creates a Mininet simulated network from the command line. '
@@ -58,7 +58,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument('-C', '--controller', choices=CONTROLLER_TYPES.keys(), default='default')
     parser.add_argument('-L', '--link', choices=LINK_TYPES.keys(), default='default')
     parser.add_argument('-T', '--topology', choices=TOPOLOGY_TYPES.keys(), default='default')
-    parser.add_argument('-I', '--interface', choices=INTERFACE_TYPES.keys(), default='default')
+    parser.add_argument('--list', action='store_true', help='List all assets (including custom) and exit.')
     parser.add_argument('-c', '--clean', action='store_true', help='Clean up the mininet topology and exit.')
     custom = parser.add_mutually_exclusive_group()
     custom.add_argument('--custom-files', nargs='*', default=[], help='Read custom assets from .py file(s).', type=_is_valid_file)
@@ -69,7 +69,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument('-i', '--ip-base', help='Base IP address for hosts.', type=ipaddress.ip_address)
     parser.add_argument('-M', '--set-host-macs', action='store_true', help='Automatically set host MAC addresses.')
     parser.add_argument('-A', '--static-arp', action='store_true', help='Enable static ARP.')
-    parser.add_argument('-v', '--verbosity', choices=VERBOSITY_TYPES)
+    parser.add_argument('-v', '--verbosity', choices=VERBOSITY_TYPES, default='INFO')
     parser.add_argument('--listen-port', type=int, help='Base port for passive switch listening.')
     parser.add_argument('--no-listen-port', action='store_true', help="Don't use passive switch listening.")
     parser.add_argument('--pre', help='CLI script to run before tests.', type=_is_valid_file)
@@ -116,10 +116,23 @@ def load_custom_assets(asset_paths: list) -> None:
     # Update the registries:
     CONTROLLER_TYPES.update(Controller.subclasses)
     HOST_TYPES.update(Host.subclasses)
-    INTERFACE_TYPES.update(Interface.subclasses)
     LINK_TYPES.update(Link.subclasses)
     SWITCH_TYPES.update(Switch.subclasses)
     TOPOLOGY_TYPES.update(Topology.subclasses)
+
+
+def list_assets() -> None:
+    """Print out a listing of all assets to the screen."""
+    print('\nControllers:')
+    print('\n'.join(CONTROLLER_TYPES.keys()))
+    print('\nHosts:')
+    print('\n'.join(HOST_TYPES.keys()))
+    print('\nLinks:')
+    print('\n'.join(LINK_TYPES.keys()))
+    print('\nSwitches:')
+    print('\n'.join(SWITCH_TYPES.keys()))
+    print('\nTopologies:')
+    print('\n'.join(TOPOLOGY_TYPES.keys()))
 
 
 def run_cleanup(deployment_type: str = 'local') -> None:
@@ -138,13 +151,16 @@ def main() -> None:
     # TODO: Add support for other deployment types.
     deployment_type = 'docker' if args.docker else 'local'
     if args.version:
-        print(VERSION)
+        print(__version__)
     elif args.clean:
         run_cleanup(deployment_type=deployment_type)
+    elif args.list:
+        load_custom_assets(args.custom_files)
+        list_assets()
     else:
         try:
             load_custom_assets(args.custom_files)
-            network = Mininet3(
+            network = MirrorNet(
                 deployment_type=deployment_type,
                 topology_type=args.topology,
                 switch_type=args.switch,
