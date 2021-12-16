@@ -1,24 +1,38 @@
 """Network emulation."""
-
 # TODO: Add constructors from JSON, YAML, NEO4J, etc.
 
 import logging
 
 from typing import Union
 
-from mininet3 import nodes
+from mininet3.core import nodes
+from mininet3.core import topology
 
 logger = logging.getLogger(__name__)
 
+DEPLOYMENT_TYPES = (
+    'local',
+    # TODO:
+    # 'remote',  # SSH deployment
+    # 'docker',
+    # 'docker-swarm',
+    # 'kubernetes',
+    # 'aws-ec2',
+    # 'aws-ecs',
+    # 'aws-eks',
+    # 'custom',
+)
 
-class Mininet3:
+
+class Mininet3:  # pylint: disable=too-many-instance-attributes
     """Mininet Network Emulator for Python3."""
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments
             self,
-            topology_type: str = 'linear',
-            switch_type: str = 'ovs',
-            host_type: str = 'cfs',
+            deployment_type: str = 'local',
+            topology_type: str = 'default',
+            switch_type: str = 'default',
+            host_type: str = 'default',
             controller_type: str = 'default',
             link_type: str = 'default',
             interface_type: str = 'default',
@@ -43,41 +57,58 @@ class Mininet3:
             sw_wait_sec: How many seconds to wait for switches to connect (or don't wait if set to None/False/0).
             # TODO: inNamespace support for port mappings?
         """
+        if deployment_type not in DEPLOYMENT_TYPES:
+            raise ValueError(f'Invalid deployment type "{deployment_type}" was given.')
         self.switch_type = switch_type
         self.host_type = host_type
         self.controller_type = controller_type
         self.link_type = link_type
         self.interface_type = interface_type
+        # TODO: Subnet for ip base?
         self.ip_base = kwargs.get('ip_base', '10.0.0.0')
-        self.set_mac_addresses = kwargs.get('set_mac_addresses', True)
+        self.set_host_macs = kwargs.get('set_host_macs', True)
         self.static_arp = kwargs.get('static_arp', True)
         self.pin_cpus = kwargs.get('pin_cpus', False)
         self.listen_port = kwargs.get('listen_port', 8000)
         self.sw_wait_sec = kwargs.get('sw_wait_sec', 60)
-        topology_cls = nodes.get_cls_by_name(topology_type, 'topology')
-        self.topology: nodes.Topology = topology_cls()
+        topology_cls = topology.get_topology_by_name(topology_type)
+        self.topology: topology.Topology = topology_cls()
+
+    async def _async_add_node(self, name: str, node_type: str, node_cls: Union[str, nodes.Node]) -> None:
+        """Add a new node to the topology asynchronously."""
+        await self.topology.async_add_node(name=name, node_type=node_type, node_cls=node_cls)
 
     def _add_node(self, name: str, node_type: str, node_cls: Union[str, nodes.Node]) -> None:
         """Add a new node to the topology."""
-        if node_type not in ('hosts', 'links', 'switches'):
-            raise ValueError(f'Invalid Node Type "{node_type}" was specified.')
-        if isinstance(node_cls, str):
-            node_cls = nodes.get_cls_by_name(name, node_type)
-        node = node_cls()
-        getattr(self.topology, node_type)[name] = node
+        self.topology.add_node(name=name, node_type=node_type, node_cls=node_cls)
+
+    async def _async_remove_node(self, name: str, node_type: str) -> None:
+        """Remove a node from the topology by name and type asynchronously."""
+        await self.topology.async_remove_node(name=name, node_type=node_type)
 
     def _remove_node(self, name: str, node_type: str) -> None:
         """Remove a node from the topology by name and type."""
-        if node_type not in ('host', 'link', 'switch'):
-            raise ValueError(f'Invalid Node Type "{node_type}" was specified.')
-        if name not in getattr(self.topology, node_type):
-            raise KeyError(f'Failed to delete node. A {node_type} named "{name}" was not found in the network.')
-        getattr(self.topology, node_type).pop(name)
+        self.topology.remove_node(name=name, node_type=node_type)
+
+    async def async_start(self) -> None:
+        """Start Mininet asynchronously."""
+        await self.topology.async_build()
+        await self.topology.async_start()
 
     def start(self) -> None:
         """Start the Mininet simulator."""
         logger.info('Starting the simulated network.')
+        self.topology.build()
         self.topology.start()
+
+    async def async_add_host(self, name: str, host_type: Union[str, nodes.Host] = None) -> None:
+        """Add a new host to the network topology.
+
+        Args:
+            name: The name to assign to the new host. Must be unique.
+            host_type: A custom type of host to use. Otherwise, it will use self.host_type.
+        """
+        await self._async_add_node(name, 'host', host_type)
 
     def add_host(self, name: str, host_type: Union[str, nodes.Host] = None) -> None:
         """Add a new host to the network topology.
@@ -88,6 +119,15 @@ class Mininet3:
         """
         self._add_node(name, 'host', host_type)
 
+    async def async_add_link(self, name: str, link_type: Union[str, nodes.Link] = None) -> None:
+        """Add a new link to the network topology asynchronously.
+
+        Args:
+            name: The name to assign to the new link. Must be unique.
+            link_type: A custom type of link to use. Otherwise, it will use self.link_type.
+        """
+        await self._async_add_node(name, 'link', link_type)
+
     def add_link(self, name: str, link_type: Union[str, nodes.Link] = None) -> None:
         """Add a new link to the network topology.
 
@@ -97,6 +137,15 @@ class Mininet3:
         """
         self._add_node(name, 'link', link_type)
 
+    async def async_add_switch(self, name: str, switch_type: Union[str, nodes.Switch] = None) -> None:
+        """Add a new switch to the network topology asynchronously.
+
+        Args:
+            name: The name to assign to the new switch. Must be unique.
+            switch_type: A custom type of switch to use. Otherwise, it will use self.switch_type.
+        """
+        await self._async_add_node(name, 'switch', switch_type)
+
     def add_switch(self, name: str, switch_type: Union[str, nodes.Switch] = None) -> None:
         """Add a new switch to the network topology.
 
@@ -105,6 +154,17 @@ class Mininet3:
             switch_type: A custom type of switch to use. Otherwise, it will use self.switch_type.
         """
         self._add_node(name, 'switch', switch_type)
+
+    async def async_remove_host(self, name: str) -> None:
+        """Remove an existing host by name asynchronously.
+
+        Args:
+            name: The name of the host to remove.
+
+        Raises:
+            KeyError: If the host name was not found.
+        """
+        await self._async_remove_node(name, 'host')
 
     def remove_host(self, name: str) -> None:
         """Remove an existing host by name.
@@ -117,6 +177,17 @@ class Mininet3:
         """
         self._remove_node(name, 'host')
 
+    async def async_remove_link(self, name: str) -> None:
+        """Remove an existing link by name asynchronously.
+
+        Args:
+            name: The name of the link to remove.
+
+        Raises:
+            KeyError: If the link name was not found.
+        """
+        await self._async_remove_node(name, 'link')
+
     def remove_link(self, name: str) -> None:
         """Remove an existing link by name.
 
@@ -127,6 +198,17 @@ class Mininet3:
             KeyError: If the link name was not found.
         """
         self._remove_node(name, 'link')
+
+    async def async_remove_switch(self, name: str) -> None:
+        """Remove an existing switch by name asynchronously.
+
+        Args:
+            name: The name of the switch to remove.
+
+        Raises:
+            KeyError: If the switch name was not found.
+        """
+        await self._async_remove_node(name, 'switch')
 
     def remove_switch(self, name: str) -> None:
         """Remove an existing switch by name.

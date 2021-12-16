@@ -1,6 +1,6 @@
 """Interface node types."""
 
-from mininet3.nodes.base import Node
+from mininet3.core.nodes.base import Node
 
 
 class Interface(Node):

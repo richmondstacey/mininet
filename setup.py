@@ -15,7 +15,7 @@ SCRIPTS = [join('bin', filename) for filename in ['mn']]
 
 def _read_requirements() -> list:
     """Read the requirements.txt file."""
-    with open(os.path.join(RELATIVE_DIR, 'requirements.txt'), 'rt') as file:
+    with open(os.path.join(RELATIVE_DIR, 'mininet3/requirements.txt'), 'rt') as file:
         requires = file.readlines()
     return requires
 

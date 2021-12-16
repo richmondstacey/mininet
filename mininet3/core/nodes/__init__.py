@@ -2,13 +2,12 @@
 
 from typing import Type, Union
 
-from mininet3.nodes.controllers import Controller, CONTROLLER_TYPES
-from mininet3.nodes.hosts import Host, HOST_TYPES
-from mininet3.nodes.interfaces import Interface, INTERFACE_TYPES
-from mininet3.nodes.links import Link, LINK_TYPES
-from mininet3.nodes.base import Node
-from mininet3.nodes.switches import Switch, SWITCH_TYPES
-from mininet3.nodes.topologies import Topology, TOPOLOGY_TYPES
+from mininet3.core.nodes.controllers import Controller, CONTROLLER_TYPES
+from mininet3.core.nodes.hosts import Host, HOST_TYPES
+from mininet3.core.nodes.interfaces import Interface, INTERFACE_TYPES
+from mininet3.core.nodes.links import Link, LINK_TYPES
+from mininet3.core.nodes.base import Node
+from mininet3.core.nodes.switches import Switch, SWITCH_TYPES
 
 NODES_BY_TYPE = {
     'controller': CONTROLLER_TYPES,
@@ -16,14 +15,13 @@ NODES_BY_TYPE = {
     'interface': INTERFACE_TYPES,
     'link': LINK_TYPES,
     'switch': SWITCH_TYPES,
-    'topology': TOPOLOGY_TYPES,
 }
 
 
 def get_cls_by_name(
         name: str,
         node_type: str,
-) -> Union[Type[Node], Type[Host], Type[Link], Type[Switch], Type[Topology]]:
+) -> Union[Type[Node], Type[Host], Type[Link], Type[Switch]]:
     """Get the node class based upon its name and type.
 
     Args:
@@ -58,6 +56,4 @@ __all__ = (
     'Node',
     'Switch',
     'SWITCH_TYPES',
-    'Topology',
-    'TOPOLOGY_TYPES',
 )

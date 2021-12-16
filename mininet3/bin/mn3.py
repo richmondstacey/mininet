@@ -2,16 +2,19 @@
 """Mininet CLI for python3."""
 
 import argparse
+import asyncio
 import ipaddress
 import logging
 import os
 
-from mininet3.network import Mininet3
-from mininet3.nodes import CONTROLLER_TYPES, HOST_TYPES, INTERFACE_TYPES, LINK_TYPES, SWITCH_TYPES, TOPOLOGY_TYPES
+from mininet3.core.network import Mininet3
+from mininet3.core.nodes import CONTROLLER_TYPES, HOST_TYPES, INTERFACE_TYPES, LINK_TYPES, SWITCH_TYPES
+from mininet3.core.topology import TOPOLOGY_TYPES
 
 # TODO: Status update instead of printing everything to screen?
 
 logger = logging.getLogger(__name__)
+USE_ASYNC = os.getenv('USE_ASYNC', 'false').lower() == 'true'
 VERSION = '3.0.0'  # TODO: Use the shared version.
 VERBOSITY_TYPES = (
     'critical',
@@ -44,14 +47,18 @@ def get_args() -> argparse.Namespace:
         description='The mn utility creates a Mininet simulated network from the command line. '
                     'It can create parametrized topologies, invoke the Mininet CLI, and run tests.',
     )
-    parser.add_argument('-S', '--switch', choices=SWITCH_TYPES.keys(), default='ovs')
-    parser.add_argument('-H', '--host', choices=HOST_TYPES.keys(), default='cfs')
+    parser.add_argument('-S', '--switch', choices=SWITCH_TYPES.keys(), default='default')
+    parser.add_argument('-H', '--host', choices=HOST_TYPES.keys(), default='default')
     parser.add_argument('-C', '--controller', choices=CONTROLLER_TYPES.keys(), default='default')
     parser.add_argument('-L', '--link', choices=LINK_TYPES.keys(), default='default')
-    parser.add_argument('-T', '--topology', choices=TOPOLOGY_TYPES.keys(), default='linear')
+    parser.add_argument('-T', '--topology', choices=TOPOLOGY_TYPES.keys(), default='default')
     parser.add_argument('-I', '--interface', choices=INTERFACE_TYPES.keys(), default='default')
     parser.add_argument('-c', '--clean', action='store_true', help='Clean up the mininet topology and exit.')
-    parser.add_argument('--custom', nargs='+', help='Read custom classes/params from .py file(s).', type=_is_valid_file)
+    custom = parser.add_mutually_exclusive_group()
+    custom.add_argument('--custom-files', nargs='+', help='Read custom assets from .py file(s).', type=_is_valid_file)
+    # TODO: Additional arguments needed for credentials, etc.
+    # custom.add_argument('--custom-s3', nargs='+', help='Read custom assets from S3.')
+    # TODO: Add support to read from Databases?
     parser.add_argument('-x', '--xterms', action='store_true', help='Spawn xterms for each node.')
     parser.add_argument('-i', '--ip-base', help='Base IP address for hosts.', type=ipaddress.ip_address)
     parser.add_argument('-M', '--set-host-macs', action='store_true', help='Automatically set host MAC addresses.')
@@ -61,10 +68,18 @@ def get_args() -> argparse.Namespace:
     parser.add_argument('--no-listen-port', action='store_true', help="Don't use passive switch listening.")
     parser.add_argument('--pre', help='CLI script to run before tests.', type=_is_valid_file)
     parser.add_argument('--post', help='CLI script to run after tests.', type=_is_valid_file)
-    parser.add_argument('--pin', action='store_true', help='Pin hosts to CPU cores (requires --host cfs or --host rt).')
+    parser.add_argument('--pin-cpus', action='store_true', help='Pin hosts to CPU cores (requires --host cfs or --host rt).')
     parser.add_argument('--nat', action='store_true', help=NAT_HELP)
     parser.add_argument('--sw-wait-sec', type=int, default=0, help='How many seconds to wait for switches to connect.')
     parser.add_argument('--version', action='store_true', help='Print the version and exit.')
+    deployment = parser.add_mutually_exclusive_group()
+    deployment.add_argument('--docker', action='store_true', help='Deploy Mininet in Docker containers.')
+    # TODO: Additional arguments needed for credentials, etc.
+    # deployment.add_argument('--docker-swarm', action='store_true', help='Deploy Mininet as a Docker swarm service.')
+    # deployment.add_argument('--kubernetes', action='store_true', help='Deploy Mininet on Kubernetes.')
+    # deployment.add_argument('--aws-ec2', action='store_true', help='Deploy Mininet on AWS EC2.')
+    # deployment.add_argument('--aws-ecs', action='store_true', help='Deploy Mininet on AWS ECS.')
+    # deployment.add_argument('--aws-eks', action='store_true', help='Deploy Mininet on AWS EKS.')
     args = parser.parse_args()
     return args
 
@@ -75,40 +90,54 @@ def load_custom_assets(asset_paths: list) -> None:
     logger.info(f'Loading custom assets from {asset_paths}.')
 
 
-def run_cleanup() -> None:
+def run_cleanup(deployment_type: str = 'local') -> None:
     """Cleanup the Mininet network."""
     # TODO: Add logic here to clean up the old topology.
     logger.info('Cleaning up the Mininet network.')
+    # Currently, this just runs pgrep and pkill -9 to all services.
+    # TODO: Find a safer/cleaner method to cleaning up.
+    # TODO: This also depends upon the deployment method used.
 
 
 def main() -> None:
     """Collect user arguments and run the Mininet CLI."""
     args = get_args()
+    # TODO: Add support for other deployment types.
+    deployment_type = 'docker' if args.docker else 'local'
     if args.version:
         print(VERSION)
     elif args.clean:
-        run_cleanup()
+        run_cleanup(deployment_type=deployment_type)
     else:
         try:
-            if args.custom:
+            if args.custom_files:
                 load_custom_assets(args.custom)
-            mn = Mininet3(
+            network = Mininet3(
+                deployment_type=deployment_type,
                 topology_type=args.topology,
                 switch_type=args.switch,
                 host_type=args.host,
                 controller_type=args.controller,
                 link_type=args.link,
                 interface_type=args.interface,
+                ip_base=args.ip_base,
+                set_host_macs=args.set_host_macs,
+                static_arp=args.static_arp,
+                pin_cpus=args.pin_cpus,
+                listen_port=args.listen_port,
+                sw_wait_sec=args.sw_wait_sec,
             )
-            mn.start()
+            if USE_ASYNC:
+                asyncio.run(network.async_start())
+            else:
+                network.start()
         except KeyboardInterrupt:
             logger.warning('Stopping Mininet...')
-            run_cleanup()
         except Exception as error:  # pylint: disable=broad-except
             logger.exception(error)
             raise
         finally:
-            run_cleanup()
+            run_cleanup(deployment_type=deployment_type)
 
 
 if __name__ == '__main__':

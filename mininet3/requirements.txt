@@ -1,0 +1,4 @@
+coloredlogs
+fastapi
+setuptools
+uvicorn[standard]
