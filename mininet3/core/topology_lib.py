@@ -16,6 +16,13 @@ logger = logging.getLogger(__name__)
 class Topology(metaclass=abc.ABCMeta):  # pylint: disable=too-many-instance-attributes
     """Base class for all Topology types."""
 
+    subclasses = {}
+
+    def __init_subclass__(cls, **kwargs) -> None:
+        """Register subclasses."""
+        super().__init_subclass__(**kwargs)
+        cls.subclasses[cls.__name__] = cls
+
     def __init__(  # pylint: disable=too-many-arguments
             self,
             deployment_type: str = 'default',

@@ -5,6 +5,7 @@
 
 ### Goals
 
+- Make mininet reactive/dynamic
 - Scalability built-in
 - Optimized for Python3
 - Optimized via Cython
@@ -20,4 +21,9 @@
 ### TODO
 
 - Call mnexec.c directly via Cython extensions instead of subprocess?
-- 
+- Controller types
+- Switch types
+- Interface types
+- Host types (CPU limited host)
+- Defaults should just work... local
+- Add support for non-Linux local?

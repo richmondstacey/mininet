@@ -6,6 +6,13 @@ from mininet3.core.node_lib import Node, DockerNode
 class Switch(Node):
     """Base class for all Switch types."""
 
+    subclasses = {}
+
+    def __init_subclass__(cls, **kwargs) -> None:
+        """Register subclasses."""
+        super().__init_subclass__(**kwargs)
+        cls.subclasses[cls.__name__] = cls
+
 
 class DockerSwitch(DockerNode, Switch):
     """Base class for launching a switch within a Docker container."""

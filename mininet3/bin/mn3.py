@@ -3,21 +3,23 @@
 
 import argparse
 import asyncio
+import importlib
 import ipaddress
 import logging
 import os
 
-from mininet3.core.controller_lib import CONTROLLER_TYPES
-from mininet3.core.host_lib import HOST_TYPES
-from mininet3.core.link_lib import LINK_TYPES
-from mininet3.core.interface_lib import INTERFACE_TYPES
+from mininet3.core.controller_lib import Controller, CONTROLLER_TYPES
+from mininet3.core.host_lib import Host, HOST_TYPES
+from mininet3.core.link_lib import Link, LINK_TYPES
+from mininet3.core.interface_lib import Interface, INTERFACE_TYPES
 from mininet3.core.network_lib import Mininet3
-from mininet3.core.switch_lib import SWITCH_TYPES
-from mininet3.core.topology_lib import TOPOLOGY_TYPES
+from mininet3.core.switch_lib import Switch, SWITCH_TYPES
+from mininet3.core.topology_lib import Topology, TOPOLOGY_TYPES
 
 # TODO: Status update instead of printing everything to screen?
 
 logger = logging.getLogger(__name__)
+REL_DIR = os.path.dirname(os.path.abspath(__file__))
 USE_ASYNC = os.getenv('USE_ASYNC', 'false').lower() == 'true'
 VERSION = '3.0.0'  # TODO: Use the shared version.
 VERBOSITY_TYPES = (
@@ -59,7 +61,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument('-I', '--interface', choices=INTERFACE_TYPES.keys(), default='default')
     parser.add_argument('-c', '--clean', action='store_true', help='Clean up the mininet topology and exit.')
     custom = parser.add_mutually_exclusive_group()
-    custom.add_argument('--custom-files', nargs='+', help='Read custom assets from .py file(s).', type=_is_valid_file)
+    custom.add_argument('--custom-files', nargs='*', default=[], help='Read custom assets from .py file(s).', type=_is_valid_file)
     # TODO: Additional arguments needed for credentials, etc.
     # custom.add_argument('--custom-s3', nargs='+', help='Read custom assets from S3.')
     # TODO: Add support to read from Databases?
@@ -90,8 +92,34 @@ def get_args() -> argparse.Namespace:
 
 def load_custom_assets(asset_paths: list) -> None:
     """Load custom classes, parameters, etc."""
-    # TODO: Add these to the nodes registry dynamically.
     logger.info(f'Loading custom assets from {asset_paths}.')
+    asset_paths = [
+        os.path.join(os.path.dirname(REL_DIR), 'custom'),  # Include the built-in custom folder.
+        *asset_paths
+    ]
+    for path in asset_paths:
+        if os.path.isfile(path):
+            files = [path]
+        else:
+            files = os.listdir(path)
+        for file in files:
+            if not file.endswith('.py') or file.startswith('_'):
+                continue
+            # Convert the file path into a module path, remove the parent directory (mininet).
+            file_path = os.path.join(path, file)
+            file_path = file_path.split('mininet', 1)[-1]
+            module_path = file_path.replace(os.sep, '.').rsplit('.', 1)[0].lstrip('.')
+            # Load all of these modules into memory for subclass registry to pick them up.
+            importlib.import_module(module_path)
+            logger.debug(f'Loaded custom assets from: {path}.')
+
+    # Update the registries:
+    CONTROLLER_TYPES.update(Controller.subclasses)
+    HOST_TYPES.update(Host.subclasses)
+    INTERFACE_TYPES.update(Interface.subclasses)
+    LINK_TYPES.update(Link.subclasses)
+    SWITCH_TYPES.update(Switch.subclasses)
+    TOPOLOGY_TYPES.update(Topology.subclasses)
 
 
 def run_cleanup(deployment_type: str = 'local') -> None:
@@ -106,6 +134,7 @@ def run_cleanup(deployment_type: str = 'local') -> None:
 def main() -> None:
     """Collect user arguments and run the Mininet CLI."""
     args = get_args()
+    logger.setLevel(args.verbosity.upper())
     # TODO: Add support for other deployment types.
     deployment_type = 'docker' if args.docker else 'local'
     if args.version:
@@ -114,8 +143,7 @@ def main() -> None:
         run_cleanup(deployment_type=deployment_type)
     else:
         try:
-            if args.custom_files:
-                load_custom_assets(args.custom)
+            load_custom_assets(args.custom_files)
             network = Mininet3(
                 deployment_type=deployment_type,
                 topology_type=args.topology,
