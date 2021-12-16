@@ -1,10 +1,14 @@
 """Controller node types."""
 
-from mininet3.core.nodes.base import Node
+from mininet3.core.node_lib import Node, DockerNode
 
 
 class Controller(Node):
     """Base controller type."""
+
+
+class DockerController(DockerNode, Controller):
+    """Base class for launching a controller within a Docker container."""
 
 
 # class NOXController(Controller):
@@ -29,6 +33,7 @@ class Controller(Node):
 
 CONTROLLER_TYPES = {
     'default': Controller,
+    'docker': DockerController,
     # 'nox': NOXController,
     # 'ovsc': OVSCController,
     # 'ref': REFController,

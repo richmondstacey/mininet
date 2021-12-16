@@ -1,4 +1,5 @@
 coloredlogs
+docker
 fastapi
 setuptools
 uvicorn[standard]

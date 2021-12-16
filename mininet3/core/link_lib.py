@@ -1,9 +1,7 @@
 """Link types."""
 
-from mininet3.core.nodes.base import Node
 
-
-class Link(Node):
+class Link:
     """Base class for all Link types."""
 
 #

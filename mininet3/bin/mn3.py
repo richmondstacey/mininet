@@ -7,9 +7,13 @@ import ipaddress
 import logging
 import os
 
-from mininet3.core.network import Mininet3
-from mininet3.core.nodes import CONTROLLER_TYPES, HOST_TYPES, INTERFACE_TYPES, LINK_TYPES, SWITCH_TYPES
-from mininet3.core.topology import TOPOLOGY_TYPES
+from mininet3.core.controller_lib import CONTROLLER_TYPES
+from mininet3.core.host_lib import HOST_TYPES
+from mininet3.core.link_lib import LINK_TYPES
+from mininet3.core.interface_lib import INTERFACE_TYPES
+from mininet3.core.network_lib import Mininet3
+from mininet3.core.switch_lib import SWITCH_TYPES
+from mininet3.core.topology_lib import TOPOLOGY_TYPES
 
 # TODO: Status update instead of printing everything to screen?
 

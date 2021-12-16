@@ -1,10 +1,14 @@
 """Switch node types."""
 
-from mininet3.core.nodes.base import Node
+from mininet3.core.node_lib import Node, DockerNode
 
 
 class Switch(Node):
     """Base class for all Switch types."""
+
+
+class DockerSwitch(DockerNode, Switch):
+    """Base class for launching a switch within a Docker container."""
 
 
 # class IVSSwitch(Switch):
@@ -33,6 +37,7 @@ class Switch(Node):
 
 SWITCH_TYPES = {
     'default': Switch,
+    'docker': DockerSwitch,
     # 'ivs': IVSSwitch,
     # 'lxbr': LXBRSwitch,
     # 'ovs': OVSSwitch,

@@ -1,1 +1,1 @@
-"""Mininet Core."""
+"""Mininet Core Library."""

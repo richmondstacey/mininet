@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from mininet3.api.routes import core_v1
+from mininet3.api.routes import core_v1, topology_v1
 
 app = FastAPI(
     title="Mininet",
@@ -20,6 +20,7 @@ app.add_middleware(
 )
 # Register routes.
 app.include_router(core_v1.Router, prefix='/core')
+app.include_router(topology_v1.Router, prefix='/topology')
 
 
 @app.get('/')
